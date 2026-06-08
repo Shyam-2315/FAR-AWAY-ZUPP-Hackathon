@@ -39,7 +39,8 @@ def _register_user(client: TestClient, *, role: str = "ADMIN") -> dict[str, Any]
         },
     )
     assert resp.status_code == 201, resp.text
-    return resp.json()
+    data: dict[str, Any] = resp.json()
+    return data
 
 
 def _auth_headers(token: str) -> dict[str, str]:
@@ -64,7 +65,8 @@ def _payload(**overrides: Any) -> dict[str, Any]:
 def _create_event(client: TestClient, token: str, **overrides: Any) -> dict[str, Any]:
     resp = client.post("/api/events", json=_payload(**overrides), headers=_auth_headers(token))
     assert resp.status_code == 201, resp.text
-    return resp.json()
+    data: dict[str, Any] = resp.json()
+    return data
 
 
 def test_event_crud_flow(client: TestClient) -> None:

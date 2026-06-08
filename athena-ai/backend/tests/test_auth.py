@@ -82,7 +82,8 @@ def _register_user(
         json={"name": name, "email": email, "password": password, "role": role},
     )
     assert resp.status_code == 201, resp.text
-    return resp.json()
+    data: dict[str, Any] = resp.json()
+    return data
 
 
 # ------------------------------------------------------------------ #
