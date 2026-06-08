@@ -9,10 +9,12 @@ Athena AI is an Autonomous Decision Intelligence Platform. This repository is a 
 - PostgreSQL decision-intelligence schema: users, events, investigations, predictions, recommendations, decisions, and reports.
 - **Enterprise-grade JWT authentication and RBAC** — register, login, refresh, logout, `/me`, role guards, refresh-token rotation, token revocation, and audit logging.
 - **Production-grade Event Management Engine** with JWT-protected CRUD APIs, RBAC, pagination, filtering, sorting, search, tenant-ready fields, and event timeline activity tracking.
-- Next.js + TypeScript + Tailwind CSS frontend scaffold.
+- **Frontend-ready CORS** — `FRONTEND_ORIGINS` env variable accepts comma-separated origins for Vite, Next.js, or any dev port.
+- **Phase 3.1 — LangGraph Multi-Agent Workflow Skeleton** — deterministic 6-agent pipeline (Observer → Investigation → Prediction → Strategy → Decision → Reporting) exposed via `POST /api/agents/run/{event_id}`. Event status lifecycle managed (PROCESSING → RESOLVED/FAILED). Full workflow JSON returned to the frontend.
+- Lovable-generated React/Vite + TanStack Router frontend in `frontend/athena-ai-dashboard-main`.
 - PostgreSQL and Redis local dependency stack through Docker Compose.
-- Root `.env.example`, `.gitignore`, `AGENTS.md`, `docs/ARCHITECTURE.md`, `docs/AUTH_FLOW.md`, `docs/DATABASE_ARCHITECTURE.md`, `docs/ER_DIAGRAM.md`, `docs/ROADMAP.md`, and `docs/SECURITY.md`.
-- Backend tests for health endpoints, database health, migrations, constraints, relationships, and full auth flow.
+- Root `.env.example`, `.gitignore`, `AGENTS.md`, and full `docs/` suite.
+- Backend tests for health endpoints, database health, migrations, constraints, relationships, full auth flow, event CRUD, frontend integration contracts, and agent workflow.
 
 ## How To Run It
 
@@ -39,31 +41,63 @@ Run the backend:
 ```bash
 cd backend
 python -m venv .venv
-source .venv/bin/activate
+source .venv/bin/activate        # Linux/macOS
+.\.venv\Scripts\Activate.ps1    # Windows PowerShell
 pip install -e ".[dev]"
 alembic upgrade head
 uvicorn app.main:app --reload
 ```
 
-On Windows PowerShell, activate the virtual environment with:
-
-```powershell
-.\.venv\Scripts\Activate.ps1
-```
-
 Run the frontend:
 
 ```bash
-cd frontend
+cd frontend/athena-ai-dashboard-main
 npm install
 npm run dev
 ```
 
 Default local URLs:
 
-- Frontend: `http://localhost:3000`
+- Frontend (Lovable Vite): `http://localhost:5173`
 - Backend API: `http://localhost:8000`
-- API docs: `http://localhost:8000/docs`
+- Swagger UI: `http://localhost:8000/docs`
+
+## Lovable.dev Frontend Integration
+
+The Lovable.dev React/Vite frontend is wired to the backend API client in `frontend/athena-ai-dashboard-main/src/lib/api.ts`.
+
+**Frontend environment variable (`.env.local` in the frontend project):**
+
+```dotenv
+VITE_API_BASE_URL=http://localhost:8000
+```
+
+**Backend CORS is pre-configured for all common local dev ports:**
+
+```dotenv
+FRONTEND_ORIGINS=http://localhost:3000,http://localhost:5173,http://localhost:8080
+```
+
+To add a Lovable.dev preview or production URL:
+
+```dotenv
+FRONTEND_ORIGINS=http://localhost:5173,https://your-app.lovable.app
+```
+
+See `docs/FRONTEND_INTEGRATION.md` for the full integration guide including auth flow patterns, refresh token handling, and TypeScript examples.
+
+See `docs/LOVABLE_API_CONTRACTS.md` for exact request/response shapes, query parameters, error formats, and TypeScript type sketches for every endpoint.
+
+Working integrated flow:
+
+1. Register or login.
+2. Open the protected dashboard.
+3. Create, list, view, edit, and delete events.
+4. Run the AI workflow from an event detail page.
+5. Review the workflow response or a clean fallback if the endpoint is unavailable.
+6. Logout from the topbar or settings page.
+
+The frontend self-register flow requests a `MANAGER` demo role so event creation, deletion, and workflow execution work end-to-end in local hackathon/demo environments. Backend RBAC still enforces role requirements on every endpoint.
 
 ## API Endpoints
 
@@ -94,24 +128,56 @@ All token responses use the Lovable.dev-compatible envelope:
 
 ### Events (`/api/events`)
 
-- `POST /api/events` - create an event (requires `ANALYST` or above).
-- `GET /api/events` - list events (requires `VIEWER` or above).
-- `GET /api/events/{event_id}` - fetch one event with timeline (requires `VIEWER` or above).
-- `PATCH /api/events/{event_id}` - update an event (requires `ANALYST` or above).
-- `DELETE /api/events/{event_id}` - soft-delete an event (requires `MANAGER` or above).
+- `POST /api/events` — create an event (requires `ANALYST` or above).
+- `GET /api/events` — list events with pagination, filtering, search, sorting (requires `VIEWER` or above).
+- `GET /api/events/{event_id}` — fetch one event with timeline (requires `VIEWER` or above).
+- `PATCH /api/events/{event_id}` — update an event (requires `ANALYST` or above).
+- `DELETE /api/events/{event_id}` — soft-delete an event (requires `MANAGER` or above).
 
-The list response is dashboard-ready:
+Event list response:
+
+```json
+{ "items": [], "total": 0, "page": 1, "page_size": 20 }
+```
+
+### Agent Workflow (`/api/agents`)
+
+- `POST /api/agents/run/{event_id}` — run the full multi-agent pipeline (requires `ANALYST` or above).
+
+**Example request:**
+
+```bash
+curl -X POST http://localhost:8000/api/agents/run/<event_id> \
+  -H "Authorization: Bearer <access_token>"
+```
+
+**Example response structure:**
 
 ```json
 {
-  "items": [],
-  "total": 0,
-  "page": 1,
-  "page_size": 20
+  "event_id": "...",
+  "event_status": "RESOLVED",
+  "observation":   { "summary": "...", "detected_type": "...", "priority": "...", "risk_indicators": [], "confidence": 0.85 },
+  "investigation": { "root_cause": "...", "impact": "...", "evidence": [], "confidence": 0.80 },
+  "prediction":    { "revenue_risk": 125000.0, "delay_probability": 0.72, "churn_probability": 0.18, "severity_score": 7.5, "confidence": 0.78 },
+  "strategies":    [ { "title": "...", "description": "...", "estimated_savings": 85000.0, "effort": "MEDIUM", "risk_reduction": 0.65, "confidence": 0.82 } ],
+  "decision":      { "selected_action": {}, "decision_reason": "...", "expected_savings": 85000.0, "confidence": 0.82, "requires_human_approval": false },
+  "report":        { "executive_summary": "...", "technical_summary": "...", "recommended_action": "...", "estimated_savings": 85000.0, "confidence": 0.81 },
+  "confidence_score": 0.81,
+  "started_at": "2026-06-08T12:00:00Z",
+  "completed_at": "2026-06-08T12:00:01Z",
+  "errors": []
 }
 ```
 
-Supported list query parameters: `page`, `page_size`, `search`, `severity`, `event_type`, `status`, `tenant_id`, `sort_by`, and `sort_order`.
+The workflow:
+1. Fetches the event (404 if missing).
+2. Sets status → `PROCESSING`, records `WORKFLOW_STARTED` activity.
+3. Runs 6 LangGraph agents in sequence.
+4. On success: status → `RESOLVED`, records `WORKFLOW_COMPLETED`.
+5. On failure: status → `FAILED`, records `WORKFLOW_FAILED`.
+
+`requires_human_approval` is `true` when severity is `CRITICAL`, confidence < 0.75, or expected savings > $500k.
 
 ## Commands
 
@@ -122,25 +188,31 @@ Backend:
 - `uvicorn app.main:app --reload` — starts the FastAPI development server.
 - `pytest` — runs all backend tests (requires PostgreSQL via Docker Compose).
 - `ruff check .` — runs backend linting.
-- `mypy app` — runs backend type checking.
+- `mypy .` — runs backend type checking.
 
 Frontend:
 
-- `npm run dev` — starts the Next.js development server.
+- `npm run dev` — starts the Lovable Vite development server.
 - `npm run build` — builds the frontend.
-- `npm run lint` — runs Next.js linting.
-- `npm run typecheck` — runs TypeScript type checking.
+- `npm run lint` — runs linting.
+- No separate `typecheck` script exists; `npm run build` performs TypeScript build validation.
 
 ## Environment Variables
 
-See `.env.example` for the full list. Auth-specific variables:
+See `.env.example` for the full list.
 
 | Variable | Default | Description |
 |---|---|---|
+| `FRONTEND_ORIGINS` | `http://localhost:3000,http://localhost:5173,http://localhost:8080` | Comma-separated allowed CORS origins for the frontend |
+| `BACKEND_CORS_ORIGINS` | `http://localhost:3000` | Legacy single-origin CORS variable (merged with `FRONTEND_ORIGINS`) |
 | `JWT_SECRET_KEY` | *(must be set)* | HS256 signing secret, min 32 chars |
 | `JWT_ALGORITHM` | `HS256` | JWT signing algorithm |
 | `ACCESS_TOKEN_EXPIRE_MINUTES` | `30` | Access token lifetime |
 | `REFRESH_TOKEN_EXPIRE_DAYS` | `7` | Refresh token lifetime |
+| `VITE_API_BASE_URL` | `http://localhost:8000` | Frontend API base URL (Vite) |
+| `NEXT_PUBLIC_API_BASE_URL` | `http://localhost:8000` | Frontend API base URL (Next.js) |
+
+If the browser shows CORS or network errors, confirm the backend is running on `http://localhost:8000`, `VITE_API_BASE_URL` matches that URL, and `FRONTEND_ORIGINS` includes the active Vite origin such as `http://localhost:5173`.
 
 ## Database
 
@@ -149,27 +221,29 @@ PostgreSQL schema and migration details:
 - `docs/DATABASE_ARCHITECTURE.md` — stack, entities, repositories, and API integration guidance.
 - `docs/ER_DIAGRAM.md` — entity-relationship diagram and index summary.
 - `docs/AUTH_FLOW.md` — authentication and token lifecycle diagrams.
-- `docs/EVENT_ENGINE.md` - event API, timeline, RBAC, filters, and service architecture.
-- `docs/API_CONTRACTS.md` - public backend API contracts for auth and events.
+- `docs/EVENT_ENGINE.md` — event API, timeline, RBAC, filters, and service architecture.
+- `docs/FRONTEND_INTEGRATION.md` — full guide for connecting a Lovable.dev / Vite / Next.js frontend.
+- `docs/LOVABLE_API_CONTRACTS.md` — exact API contracts with request/response shapes and TypeScript types.
 - `docs/SECURITY.md` — security architecture, threat model, and hardening notes.
 
 Core tables: `users`, `events`, `event_activities`, `investigations`, `predictions`, `recommendations`, `decisions`, `reports`, `refresh_tokens`, `audit_logs`.
 
 ## Testing Status
 
-- Backend: `pytest` covers `/healthz`, `/health/db`, Alembic migrations, FK/unique constraints, ORM relationships, soft-delete filtering, the full auth flow (register, login, refresh rotation, revocation, logout, RBAC, expired/invalid/tampered tokens), and event CRUD/pagination/filtering/auth/invalid payload flows.
-- Frontend: no tests have been added yet.
-- LangGraph workflow integration tests: not added yet.
+- Backend: `pytest` covers `/healthz`, `/health/db`, Alembic migrations, FK/unique constraints, ORM relationships, soft-delete filtering, full auth flow, event CRUD/pagination/filtering/RBAC, frontend integration contracts, and the Phase 3.1 LangGraph workflow endpoint.
+- Latest run: **66 passed** — ruff: all checks passed — mypy: no issues (68 source files).
+- Frontend: `npm run build` passes; `npm run lint` passes with shadcn fast-refresh warnings only.
+- LangGraph workflow integration tests: added for success, auth/RBAC, missing events, status transitions, activities, response sections, decision selection, confidence, and critical-event approval.
 
 ## Roles
 
 | Role | Description |
 |---|---|
 | `ADMIN` | Full platform access |
-| `MANAGER` | Manage workflows and users |
-| `ANALYST` | Create and review investigations |
+| `MANAGER` | Manage events and workflows |
+| `ANALYST` | Create and update events and investigations |
 | `VIEWER` | Read-only access |
 
 ## Next Recommended Step
 
-Define the first decision workflow contract and expose thin REST endpoints that return flat, JSON-serializable DTOs for the Lovable.dev frontend. Protect those routes with `Depends(require_min_role(UserRole.ANALYST))` from `app.api.deps`. Wire LangGraph nodes to the existing repositories for investigation → prediction → recommendation → decision → report persistence.
+Phase 3.2 should persist workflow outputs into the existing `investigations`, `predictions`, `recommendations`, `decisions`, and `reports` tables behind service/repository interfaces while preserving the current JSON response contract for the frontend.

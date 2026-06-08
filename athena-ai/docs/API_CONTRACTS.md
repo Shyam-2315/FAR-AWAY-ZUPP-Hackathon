@@ -113,6 +113,89 @@ Requires `ANALYST+`. All fields are optional.
 
 Requires `MANAGER+`. Returns `204 No Content`.
 
+## Agent Workflow (`/api/agents`)
+
+### Run Workflow
+
+`POST /api/agents/run/{event_id}`
+
+Requires `ANALYST+`. Triggers the full multi-agent pipeline:
+Observer → Investigation → Prediction → Strategy → Decision → Reporting.
+
+**Path parameter:** `event_id` — UUID of an existing, non-deleted event.
+
+**Response `200`:**
+
+```json
+{
+  "event_id": "uuid",
+  "event_status": "RESOLVED",
+  "observation": {
+    "summary": "Operational event detected",
+    "detected_type": "logistics",
+    "priority": "HIGH",
+    "risk_indicators": [],
+    "confidence": 0.85
+  },
+  "investigation": {
+    "root_cause": "Initial root cause analysis generated from event context",
+    "impact": "Potential operational delay and customer impact",
+    "evidence": [],
+    "confidence": 0.80
+  },
+  "prediction": {
+    "revenue_risk": 125000.0,
+    "delay_probability": 0.72,
+    "churn_probability": 0.18,
+    "severity_score": 7.5,
+    "confidence": 0.78
+  },
+  "strategies": [
+    {
+      "title": "Reroute affected operation",
+      "description": "...",
+      "estimated_savings": 85000.0,
+      "effort": "MEDIUM",
+      "risk_reduction": 0.65,
+      "confidence": 0.82
+    }
+  ],
+  "decision": {
+    "selected_action": { "title": "Reroute affected operation", "..." : "..." },
+    "decision_reason": "Strategy 'Reroute affected operation' selected...",
+    "expected_savings": 85000.0,
+    "confidence": 0.82,
+    "requires_human_approval": false
+  },
+  "report": {
+    "executive_summary": "...",
+    "technical_summary": "...",
+    "recommended_action": "Reroute affected operation",
+    "estimated_savings": 85000.0,
+    "confidence": 0.81
+  },
+  "confidence_score": 0.81,
+  "started_at": "2026-06-08T12:00:00Z",
+  "completed_at": "2026-06-08T12:00:01Z",
+  "errors": []
+}
+```
+
+**`requires_human_approval` is `true` when:**
+- Event severity is `CRITICAL`
+- Decision confidence < 0.75
+- Expected savings > $500,000
+
+**Errors:**
+
+| Status | Code | When |
+|---|---|---|
+| 401 | — | Missing or invalid Bearer token |
+| 403 | — | Role below ANALYST |
+| 404 | `EVENT_NOT_FOUND` | Event does not exist or is soft-deleted |
+| 500 | `WORKFLOW_FAILED` | Pipeline raised an unhandled exception |
+| 500 | `WORKFLOW_INCOMPLETE` | Pipeline completed but outputs are missing |
+
 ## Error Shape
 
 Service errors use a structured detail object:
