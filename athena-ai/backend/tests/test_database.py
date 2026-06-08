@@ -7,8 +7,8 @@ from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, create_async_engin
 
 from app.core.settings import get_settings
 from app.models.decision import Decision
-from app.models.enums import EffortLevel, EventSeverity, EventStatus, UserRole
-from app.models.event import Event
+from app.models.enums import EffortLevel, EventActivityType, EventSeverity, EventStatus, UserRole
+from app.models.event import Event, EventActivity
 from app.models.investigation import Investigation
 from app.models.prediction import Prediction
 from app.models.recommendation import Recommendation
@@ -33,6 +33,7 @@ async def test_migrations_create_expected_tables() -> None:
     expected_tables = {
         "users",
         "events",
+        "event_activities",
         "investigations",
         "predictions",
         "recommendations",
@@ -127,6 +128,12 @@ async def test_event_child_records_cascade_on_delete(db_session: AsyncSession) -
             ),
             Decision(event_id=event.id, selected_action={"action": "notify"}, confidence=0.9),
             Report(event_id=event.id, report_type="summary", report_text="Investigation complete"),
+            EventActivity(
+                event_id=event.id,
+                activity_type=EventActivityType.CREATED,
+                actor_id=user.id,
+                details={"source": "test"},
+            ),
         ]
     )
     await db_session.flush()
@@ -143,7 +150,8 @@ async def test_event_child_records_cascade_on_delete(db_session: AsyncSession) -
               (SELECT COUNT(*) FROM predictions WHERE event_id = :event_id) AS predictions,
               (SELECT COUNT(*) FROM recommendations WHERE event_id = :event_id) AS recommendations,
               (SELECT COUNT(*) FROM decisions WHERE event_id = :event_id) AS decisions,
-              (SELECT COUNT(*) FROM reports WHERE event_id = :event_id) AS reports
+              (SELECT COUNT(*) FROM reports WHERE event_id = :event_id) AS reports,
+              (SELECT COUNT(*) FROM event_activities WHERE event_id = :event_id) AS event_activities
             """
         ),
         {"event_id": str(event_id)},
@@ -154,6 +162,7 @@ async def test_event_child_records_cascade_on_delete(db_session: AsyncSession) -
     assert row.recommendations == 0
     assert row.decisions == 0
     assert row.reports == 0
+    assert row.event_activities == 0
 
 
 @pytest.mark.asyncio

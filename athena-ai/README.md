@@ -8,6 +8,7 @@ Athena AI is an Autonomous Decision Intelligence Platform. This repository is a 
 - FastAPI backend with typed settings, async SQLAlchemy 2.0, Alembic migrations, and repository layer.
 - PostgreSQL decision-intelligence schema: users, events, investigations, predictions, recommendations, decisions, and reports.
 - **Enterprise-grade JWT authentication and RBAC** — register, login, refresh, logout, `/me`, role guards, refresh-token rotation, token revocation, and audit logging.
+- **Production-grade Event Management Engine** with JWT-protected CRUD APIs, RBAC, pagination, filtering, sorting, search, tenant-ready fields, and event timeline activity tracking.
 - Next.js + TypeScript + Tailwind CSS frontend scaffold.
 - PostgreSQL and Redis local dependency stack through Docker Compose.
 - Root `.env.example`, `.gitignore`, `AGENTS.md`, `docs/ARCHITECTURE.md`, `docs/AUTH_FLOW.md`, `docs/DATABASE_ARCHITECTURE.md`, `docs/ER_DIAGRAM.md`, `docs/ROADMAP.md`, and `docs/SECURITY.md`.
@@ -91,6 +92,27 @@ All token responses use the Lovable.dev-compatible envelope:
 }
 ```
 
+### Events (`/api/events`)
+
+- `POST /api/events` - create an event (requires `ANALYST` or above).
+- `GET /api/events` - list events (requires `VIEWER` or above).
+- `GET /api/events/{event_id}` - fetch one event with timeline (requires `VIEWER` or above).
+- `PATCH /api/events/{event_id}` - update an event (requires `ANALYST` or above).
+- `DELETE /api/events/{event_id}` - soft-delete an event (requires `MANAGER` or above).
+
+The list response is dashboard-ready:
+
+```json
+{
+  "items": [],
+  "total": 0,
+  "page": 1,
+  "page_size": 20
+}
+```
+
+Supported list query parameters: `page`, `page_size`, `search`, `severity`, `event_type`, `status`, `tenant_id`, `sort_by`, and `sort_order`.
+
 ## Commands
 
 Backend:
@@ -127,13 +149,15 @@ PostgreSQL schema and migration details:
 - `docs/DATABASE_ARCHITECTURE.md` — stack, entities, repositories, and API integration guidance.
 - `docs/ER_DIAGRAM.md` — entity-relationship diagram and index summary.
 - `docs/AUTH_FLOW.md` — authentication and token lifecycle diagrams.
+- `docs/EVENT_ENGINE.md` - event API, timeline, RBAC, filters, and service architecture.
+- `docs/API_CONTRACTS.md` - public backend API contracts for auth and events.
 - `docs/SECURITY.md` — security architecture, threat model, and hardening notes.
 
-Core tables: `users`, `events`, `investigations`, `predictions`, `recommendations`, `decisions`, `reports`, `refresh_tokens`, `audit_logs`.
+Core tables: `users`, `events`, `event_activities`, `investigations`, `predictions`, `recommendations`, `decisions`, `reports`, `refresh_tokens`, `audit_logs`.
 
 ## Testing Status
 
-- Backend: `pytest` covers `/healthz`, `/health/db`, Alembic migrations, FK/unique constraints, ORM relationships, soft-delete filtering, and the full auth flow (register, login, refresh rotation, revocation, logout, RBAC, expired/invalid/tampered tokens).
+- Backend: `pytest` covers `/healthz`, `/health/db`, Alembic migrations, FK/unique constraints, ORM relationships, soft-delete filtering, the full auth flow (register, login, refresh rotation, revocation, logout, RBAC, expired/invalid/tampered tokens), and event CRUD/pagination/filtering/auth/invalid payload flows.
 - Frontend: no tests have been added yet.
 - LangGraph workflow integration tests: not added yet.
 

@@ -1,7 +1,7 @@
 from app.models.audit_log import AuditLog
 from app.models.decision import Decision
-from app.models.enums import EffortLevel, EventSeverity, EventStatus, UserRole
-from app.models.event import Event
+from app.models.enums import EffortLevel, EventActivityType, EventSeverity, EventStatus, UserRole
+from app.models.event import Event, EventActivity
 from app.models.investigation import Investigation
 from app.models.prediction import Prediction
 from app.models.recommendation import Recommendation
@@ -14,6 +14,8 @@ __all__ = [
     "Decision",
     "EffortLevel",
     "Event",
+    "EventActivity",
+    "EventActivityType",
     "EventSeverity",
     "EventStatus",
     "Investigation",
