@@ -31,13 +31,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const login = async (email: string, password: string) => {
+    await api.healthCheck();
     const res = await api.login({ email, password });
     tokenStore.set(res.access_token, res.refresh_token);
     setUser(res.user);
   };
 
   const register = async (name: string, email: string, password: string) => {
-    const res = await api.register({ name, email, password, role: "MANAGER" });
+    await api.healthCheck();
+    const res = await api.register({ name, email, password });
     if (res.access_token) tokenStore.set(res.access_token, res.refresh_token);
     if (res.user) setUser(res.user);
   };

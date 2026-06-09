@@ -1,6 +1,6 @@
 export type Role = "ADMIN" | "MANAGER" | "ANALYST" | "VIEWER";
 export type Severity = "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
-export type Status = "NEW" | "PROCESSING" | "RESOLVED" | "FAILED";
+export type Status = "NEW" | "IN_PROGRESS" | "RESOLVED" | "FAILED";
 
 export interface User {
   id: string;

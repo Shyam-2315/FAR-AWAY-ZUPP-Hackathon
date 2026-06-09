@@ -42,7 +42,7 @@ Supported query parameters:
 | `search` | string | Searches title, description, event type, and source. |
 | `severity` | repeated enum | `LOW`, `MEDIUM`, `HIGH`, `CRITICAL`. |
 | `event_type` | repeated string | Exact event type filter. |
-| `status` | repeated enum | `NEW`, `PROCESSING`, `RESOLVED`, `FAILED`. |
+| `status` | repeated enum | `NEW`, `IN_PROGRESS`, `RESOLVED`, `FAILED`. |
 | `tenant_id` | string | Exact tenant scope filter. |
 | `sort_by` | enum | `created_at`, `updated_at`, `severity`, `status`, `event_type`, `title`. |
 | `sort_order` | enum | `asc` or `desc`. |
@@ -69,7 +69,7 @@ The service exposes `record_workflow_activity` for workflow integrations. It rec
 
 | Activity | Event status |
 |---|---|
-| `WORKFLOW_STARTED` | `PROCESSING` |
+| `WORKFLOW_STARTED` | `IN_PROGRESS` |
 | `WORKFLOW_COMPLETED` | `RESOLVED` |
 | `WORKFLOW_FAILED` | `FAILED` |
 

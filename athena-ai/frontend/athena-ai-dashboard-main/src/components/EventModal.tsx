@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import {
   Dialog,
   DialogContent,
@@ -25,7 +25,7 @@ import { api, getApiErrorMessage } from "@/lib/api";
 import { toast } from "sonner";
 
 const severities: Severity[] = ["LOW", "MEDIUM", "HIGH", "CRITICAL"];
-const statuses: Status[] = ["NEW", "PROCESSING", "RESOLVED", "FAILED"];
+const statuses: Status[] = ["NEW", "IN_PROGRESS", "RESOLVED", "FAILED"];
 
 interface FormState {
   title: string;
@@ -34,17 +34,28 @@ interface FormState {
   severity: Severity;
   status: Status;
   source: string;
+  tenant_id: string;
   metadata: string;
 }
 
 const empty: FormState = {
-  title: "",
-  description: "",
-  event_type: "shipment_delay",
-  severity: "MEDIUM",
+  title: "Suspicious Login Attempt",
+  description: "Multiple failed login attempts detected from unknown IP.",
+  event_type: "AUTHENTICATION",
+  severity: "HIGH",
   status: "NEW",
-  source: "manual",
-  metadata: "",
+  source: "auth-service",
+  tenant_id: "demo-tenant",
+  metadata: JSON.stringify(
+    {
+      ip: "192.168.1.50",
+      failed_attempts: 8,
+      country: "Unknown",
+      user_agent: "Chrome on Windows",
+    },
+    null,
+    2,
+  ),
 };
 
 interface EventModalProps {
@@ -65,15 +76,30 @@ export function EventModal({ mode, event, open, onOpenChange, trigger }: EventMo
     event
       ? {
           title: event.title,
-          description: event.description,
+          description: event.description ?? "",
           event_type: event.event_type,
           severity: event.severity,
           status: event.status,
           source: event.source ?? "",
+          tenant_id: event.tenant_id ?? "",
           metadata: event.metadata ? JSON.stringify(event.metadata, null, 2) : "",
         }
       : empty,
   );
+
+  useEffect(() => {
+    if (mode !== "edit" || !event) return;
+    setForm({
+      title: event.title,
+      description: event.description ?? "",
+      event_type: event.event_type,
+      severity: event.severity,
+      status: event.status,
+      source: event.source ?? "",
+      tenant_id: event.tenant_id ?? "",
+      metadata: event.metadata ? JSON.stringify(event.metadata, null, 2) : "",
+    });
+  }, [event, mode]);
 
   const mutation = useMutation({
     mutationFn: async () => {
@@ -96,6 +122,7 @@ export function EventModal({ mode, event, open, onOpenChange, trigger }: EventMo
         severity: form.severity,
         status: form.status,
         source: form.source.trim() || "manual",
+        tenant_id: form.tenant_id.trim() || null,
         metadata,
       };
       if (mode === "create") return api.createEvent(payload);
@@ -152,6 +179,13 @@ export function EventModal({ mode, event, open, onOpenChange, trigger }: EventMo
               <Input
                 value={form.source}
                 onChange={(e) => setForm({ ...form, source: e.target.value })}
+              />
+            </div>
+            <div>
+              <Label>Tenant ID</Label>
+              <Input
+                value={form.tenant_id}
+                onChange={(e) => setForm({ ...form, tenant_id: e.target.value })}
               />
             </div>
             <div>

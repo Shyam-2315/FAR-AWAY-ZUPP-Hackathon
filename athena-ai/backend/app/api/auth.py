@@ -26,7 +26,7 @@ from app.schemas.auth import (
 from app.services.auth_service import AuthError, AuthService
 from app.services.token_service import TokenService
 
-router = APIRouter(prefix="/auth", tags=["auth"])
+router = APIRouter(tags=["auth"])
 
 
 # ------------------------------------------------------------------ #

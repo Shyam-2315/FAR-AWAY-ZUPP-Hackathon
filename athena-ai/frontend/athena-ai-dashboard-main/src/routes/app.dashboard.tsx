@@ -44,7 +44,7 @@ function Dashboard() {
       total: data?.total ?? items.length,
       critical,
       new: items.filter((e) => e.status === "NEW").length,
-      processing: items.filter((e) => e.status === "PROCESSING").length,
+      processing: items.filter((e) => e.status === "IN_PROGRESS").length,
       resolved: items.filter((e) => e.status === "RESOLVED").length,
       revenueRisk,
     };
@@ -101,7 +101,7 @@ function Dashboard() {
           title="Event Status"
           value={`${stats.new}/${stats.processing}/${stats.resolved}`}
           icon={Gauge}
-          delta="New / Processing / Resolved"
+          delta="New / In Progress / Resolved"
         />
       </div>
 

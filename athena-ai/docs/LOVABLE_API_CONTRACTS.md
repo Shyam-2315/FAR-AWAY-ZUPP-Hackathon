@@ -178,7 +178,7 @@ Create an event. Requires `ANALYST` role or above.
   "description": "string | null (optional, max 10 000 chars)",
   "event_type": "string (required, 1–100 chars)",
   "severity": "LOW | MEDIUM | HIGH | CRITICAL",
-  "status": "NEW | PROCESSING | RESOLVED | FAILED  (optional, default NEW)",
+  "status": "NEW | IN_PROGRESS | RESOLVED | FAILED  (optional, default NEW)",
   "source": "string (required, 1–255 chars)",
   "tenant_id": "string | null (optional, 1–100 chars)",
   "metadata": "object (optional, default {})"
@@ -194,7 +194,7 @@ Create an event. Requires `ANALYST` role or above.
   "description": "string | null",
   "event_type": "string",
   "severity": "LOW | MEDIUM | HIGH | CRITICAL",
-  "status": "NEW | PROCESSING | RESOLVED | FAILED",
+  "status": "NEW | IN_PROGRESS | RESOLVED | FAILED",
   "source": "string",
   "tenant_id": "string | null",
   "metadata": "object",
@@ -288,7 +288,7 @@ Partial update. Send only the fields to change. Requires `ANALYST` role or above
   "description": "string | null",
   "event_type": "string | null",
   "severity": "LOW | MEDIUM | HIGH | CRITICAL | null",
-  "status": "NEW | PROCESSING | RESOLVED | FAILED | null",
+  "status": "NEW | IN_PROGRESS | RESOLVED | FAILED | null",
   "source": "string | null",
   "tenant_id": "string | null",
   "metadata": "object | null"
@@ -366,7 +366,7 @@ interface TokenResponse {
 
 // Events
 type EventSeverity = 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
-type EventStatus = 'NEW' | 'PROCESSING' | 'RESOLVED' | 'FAILED';
+type EventStatus = 'NEW' | 'IN_PROGRESS' | 'RESOLVED' | 'FAILED';
 type ActivityType = 'CREATED' | 'UPDATED' | 'DELETED';
 
 interface EventActivity {

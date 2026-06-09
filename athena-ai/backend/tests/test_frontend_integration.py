@@ -80,6 +80,26 @@ def test_settings_parses_frontend_origins_csv() -> None:
     assert "http://localhost:8080" in origins
 
 
+def test_settings_default_cors_includes_required_local_frontend_origins() -> None:
+    origins = Settings().backend_cors_origins
+    assert "http://localhost:5173" in origins
+    assert "http://127.0.0.1:5173" in origins
+    assert "http://localhost:3000" in origins
+    assert "http://127.0.0.1:3000" in origins
+    assert "http://localhost:8080" in origins
+    assert "http://127.0.0.1:8080" in origins
+
+
+def test_settings_rejects_wildcard_cors_origin_in_production() -> None:
+    settings = Settings(
+        ATHENA_ENV="production",
+        FRONTEND_ORIGINS="https://app.example.com,*",
+        BACKEND_CORS_ORIGINS="",
+    )
+    with pytest.raises(ValueError, match="Wildcard CORS origins"):
+        _ = settings.backend_cors_origins
+
+
 def test_settings_deduplicates_overlapping_origins() -> None:
     settings = Settings(
         FRONTEND_ORIGINS="http://localhost:3000,http://localhost:5173",

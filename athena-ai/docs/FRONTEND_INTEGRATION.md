@@ -241,7 +241,7 @@ Requires `ANALYST` role or above.
 ```
 
 - `severity`: `LOW`, `MEDIUM`, `HIGH`, `CRITICAL`
-- `status`: `NEW`, `PROCESSING`, `RESOLVED`, `FAILED` (default `NEW`)
+- `status`: `NEW`, `IN_PROGRESS`, `RESOLVED`, `FAILED` (default `NEW`)
 - `tenant_id`, `description`, `metadata` are optional
 
 **Response `201`:**
@@ -342,7 +342,7 @@ Requires `ANALYST` role or above. Send only the fields you want to change.
 
 ```json
 {
-  "status": "PROCESSING",
+  "status": "IN_PROGRESS",
   "severity": "CRITICAL"
 }
 ```

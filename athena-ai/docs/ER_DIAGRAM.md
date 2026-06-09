@@ -111,7 +111,7 @@ erDiagram
 | --- | --- |
 | `user_role` | `ADMIN`, `MANAGER`, `ANALYST`, `VIEWER` |
 | `event_severity` | `LOW`, `MEDIUM`, `HIGH`, `CRITICAL` |
-| `event_status` | `NEW`, `PROCESSING`, `RESOLVED`, `FAILED` |
+| `event_status` | `NEW`, `IN_PROGRESS`, `RESOLVED`, `FAILED` |
 | `effort_level` | `LOW`, `MEDIUM`, `HIGH` |
 
 ## Index Summary

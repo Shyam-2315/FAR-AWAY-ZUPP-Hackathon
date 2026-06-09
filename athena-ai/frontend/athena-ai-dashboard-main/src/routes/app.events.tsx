@@ -33,6 +33,7 @@ function EventsPage() {
   const [severity, setSeverity] = useState<string>("all");
   const [status, setStatus] = useState<string>("all");
   const [type, setType] = useState<string>("");
+  const [tenantId, setTenantId] = useState<string>("");
   const [sort, setSort] = useState("recent");
   const [createOpen, setCreateOpen] = useState(false);
   const [editEvent, setEditEvent] = useState<Event | null>(null);
@@ -40,13 +41,17 @@ function EventsPage() {
 
   const sortParams = useMemo(() => {
     if (sort === "severity") return { sort_by: "severity" as const, sort_order: "desc" as const };
+    if (sort === "updated") return { sort_by: "updated_at" as const, sort_order: "desc" as const };
+    if (sort === "status") return { sort_by: "status" as const, sort_order: "asc" as const };
+    if (sort === "event_type")
+      return { sort_by: "event_type" as const, sort_order: "asc" as const };
     if (sort === "title") return { sort_by: "title" as const, sort_order: "asc" as const };
     return { sort_by: "created_at" as const, sort_order: "desc" as const };
   }, [sort]);
 
   useEffect(() => {
     setPage(1);
-  }, [q, severity, status, type, sort]);
+  }, [q, severity, status, type, tenantId, sort]);
 
   const queryParams = {
     page,
@@ -55,6 +60,7 @@ function EventsPage() {
     severity: severity === "all" ? undefined : (severity as Severity),
     status: status === "all" ? undefined : (status as Status),
     event_type: type || undefined,
+    tenant_id: tenantId || undefined,
     ...sortParams,
   };
 
@@ -119,7 +125,7 @@ function EventsPage() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All status</SelectItem>
-              {(["NEW", "PROCESSING", "RESOLVED", "FAILED"] as Status[]).map((s) => (
+              {(["NEW", "IN_PROGRESS", "RESOLVED", "FAILED"] as Status[]).map((s) => (
                 <SelectItem key={s} value={s}>
                   {s}
                 </SelectItem>
@@ -132,13 +138,22 @@ function EventsPage() {
             placeholder="event_type…"
             className="w-[180px]"
           />
+          <Input
+            value={tenantId}
+            onChange={(e) => setTenantId(e.target.value)}
+            placeholder="tenant_id..."
+            className="w-[180px]"
+          />
           <Select value={sort} onValueChange={setSort}>
             <SelectTrigger className="w-[160px]">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="recent">Sort: Recent</SelectItem>
+              <SelectItem value="updated">Sort: Updated</SelectItem>
               <SelectItem value="severity">Sort: Severity</SelectItem>
+              <SelectItem value="status">Sort: Status</SelectItem>
+              <SelectItem value="event_type">Sort: Type</SelectItem>
               <SelectItem value="title">Sort: Title</SelectItem>
             </SelectContent>
           </Select>

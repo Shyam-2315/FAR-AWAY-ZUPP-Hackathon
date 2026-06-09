@@ -123,7 +123,7 @@ class EventService:
             raise EventNotFoundError(event_id)
 
         if activity_type == EventActivityType.WORKFLOW_STARTED:
-            event.status = EventStatus.PROCESSING
+            event.status = EventStatus.IN_PROGRESS
         elif activity_type == EventActivityType.WORKFLOW_COMPLETED:
             event.status = EventStatus.RESOLVED
         elif activity_type == EventActivityType.WORKFLOW_FAILED:

@@ -85,12 +85,12 @@ def test_event_crud_flow(client: TestClient) -> None:
 
     patched = client.patch(
         f"/api/events/{event_id}",
-        json={"status": "PROCESSING", "severity": "CRITICAL"},
+        json={"status": "IN_PROGRESS", "severity": "CRITICAL"},
         headers=_auth_headers(token),
     )
     assert patched.status_code == 200, patched.text
     patched_body = patched.json()
-    assert patched_body["status"] == "PROCESSING"
+    assert patched_body["status"] == "IN_PROGRESS"
     assert patched_body["severity"] == "CRITICAL"
     assert [item["activity_type"] for item in patched_body["timeline"]] == ["CREATED", "UPDATED"]
 
@@ -143,6 +143,19 @@ def test_event_invalid_payload_returns_422(client: TestClient) -> None:
     resp = client.post(
         "/api/events",
         json=_payload(title="", severity="BLOCKER"),
+        headers=_auth_headers(token),
+    )
+
+    assert resp.status_code == 422
+
+
+def test_event_update_rejects_read_only_fields(client: TestClient) -> None:
+    token = _register_user(client, role="ADMIN")["access_token"]
+    event = _create_event(client, token)
+
+    resp = client.patch(
+        f"/api/events/{event['id']}",
+        json={"id": event["id"], "status": "IN_PROGRESS"},
         headers=_auth_headers(token),
     )
 

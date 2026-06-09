@@ -65,6 +65,8 @@ class Settings(BaseSettings):
             if origin not in seen:
                 seen.add(origin)
                 result.append(origin)
+        if self.athena_env.lower() == "production" and "*" in result:
+            raise ValueError("Wildcard CORS origins are not allowed in production")
         return result
 
 

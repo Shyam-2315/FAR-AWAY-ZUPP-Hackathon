@@ -17,7 +17,7 @@ class EventSeverity(StrEnum):
 
 class EventStatus(StrEnum):
     NEW = "NEW"
-    PROCESSING = "PROCESSING"
+    IN_PROGRESS = "IN_PROGRESS"
     RESOLVED = "RESOLVED"
     FAILED = "FAILED"
 

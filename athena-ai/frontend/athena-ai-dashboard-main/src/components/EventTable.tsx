@@ -4,6 +4,7 @@ import { SeverityBadge } from "./SeverityBadge";
 import { StatusBadge } from "./StatusBadge";
 import { Button } from "@/components/ui/button";
 import { Pencil, Trash2 } from "lucide-react";
+import { useAuth } from "@/lib/auth-context";
 
 interface EventTableProps {
   events: Event[];
@@ -12,6 +13,9 @@ interface EventTableProps {
 }
 
 export function EventTable({ events, onEdit, onDelete }: EventTableProps) {
+  const { user } = useAuth();
+  const canDelete = user?.role === "ADMIN" || user?.role === "MANAGER";
+
   return (
     <div className="glass overflow-hidden rounded-xl">
       <div className="overflow-x-auto">
@@ -59,7 +63,7 @@ export function EventTable({ events, onEdit, onDelete }: EventTableProps) {
                         <Pencil className="h-4 w-4" />
                       </Button>
                     )}
-                    {onDelete && (
+                    {onDelete && canDelete && (
                       <Button size="icon" variant="ghost" onClick={() => onDelete(e)}>
                         <Trash2 className="h-4 w-4 text-destructive" />
                       </Button>

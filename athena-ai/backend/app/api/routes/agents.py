@@ -30,7 +30,7 @@ router = APIRouter(prefix="/agents", tags=["agents"])
     description=(
         "Triggers the full Observer → Investigation → Prediction → Strategy → "
         "Decision → Reporting pipeline for the specified event. "
-        "The event status is updated to PROCESSING while the workflow runs and "
+        "The event status is updated to IN_PROGRESS while the workflow runs and "
         "RESOLVED on success (FAILED on error). "
         "Requires ANALYST role or above."
     ),

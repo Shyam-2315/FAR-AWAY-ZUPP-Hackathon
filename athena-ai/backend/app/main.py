@@ -1,3 +1,5 @@
+import asyncio
+import sys
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 
@@ -10,6 +12,9 @@ from app.api.health import router as health_router
 from app.api.routes.agents import router as agents_router
 from app.core.settings import get_settings
 from app.db.session import dispose_engine
+
+if sys.platform == "win32":
+    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
 
 @asynccontextmanager
@@ -36,7 +41,7 @@ def create_app() -> FastAPI:
     )
 
     app.include_router(health_router)
-    app.include_router(auth_router, prefix="/api")
+    app.include_router(auth_router, prefix="/api/auth")
     app.include_router(events_router, prefix="/api")
     app.include_router(agents_router, prefix="/api")
     return app

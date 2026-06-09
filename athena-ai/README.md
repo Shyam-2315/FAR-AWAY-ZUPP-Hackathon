@@ -48,6 +48,22 @@ alembic upgrade head
 uvicorn app.main:app --reload
 ```
 
+If port `8000` is already held by a stale process on Windows PowerShell:
+
+```powershell
+Get-NetTCPConnection -LocalPort 8000 -State Listen |
+  Select-Object -ExpandProperty OwningProcess -Unique |
+  ForEach-Object { Stop-Process -Id $_ -Force }
+```
+
+Start the correct backend from `backend/`:
+
+```powershell
+.\.venv\Scripts\Activate.ps1
+alembic upgrade head
+uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+```
+
 Run the frontend:
 
 ```bash
@@ -75,7 +91,7 @@ VITE_API_BASE_URL=http://localhost:8000
 **Backend CORS is pre-configured for all common local dev ports:**
 
 ```dotenv
-FRONTEND_ORIGINS=http://localhost:3000,http://localhost:5173,http://localhost:8080
+FRONTEND_ORIGINS=http://localhost:5173,http://127.0.0.1:5173,http://localhost:3000,http://127.0.0.1:3000,http://localhost:8080,http://127.0.0.1:8080
 ```
 
 To add a Lovable.dev preview or production URL:
@@ -98,6 +114,38 @@ Working integrated flow:
 6. Logout from the topbar or settings page.
 
 The frontend self-register flow requests a `MANAGER` demo role so event creation, deletion, and workflow execution work end-to-end in local hackathon/demo environments. Backend RBAC still enforces role requirements on every endpoint.
+
+## Local Frontend/Backend Connection Checks
+
+Expected local frontend env values:
+
+```dotenv
+VITE_API_BASE_URL=http://localhost:8000
+```
+
+Expected local auth URLs:
+
+- `POST http://localhost:8000/api/auth/register`
+- `POST http://localhost:8000/api/auth/login`
+- `GET  http://localhost:8000/api/auth/me`
+- `POST http://localhost:8000/api/auth/refresh`
+- `POST http://localhost:8000/api/auth/logout`
+
+Run the integration checker from the repo root:
+
+```powershell
+.\scripts\check-local-integration.ps1
+```
+
+It checks the port `8000` listener, `GET http://localhost:8000/healthz`, `GET http://localhost:8000/openapi.json`, confirms `/api/auth/register` is published in OpenAPI, and prints the frontend `VITE_API_BASE_URL`.
+
+Troubleshooting:
+
+- Backend unreachable: `GET /healthz` fails or the browser reports it cannot reach `http://localhost:8000`. Kill stale port `8000` processes, start `uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload` from `backend/`, then retry `.\scripts\check-local-integration.ps1`.
+- CORS error: `/healthz` succeeds from PowerShell, but the browser blocks frontend requests. Set `FRONTEND_ORIGINS` to include the active frontend origin, for example `http://localhost:5173`, and restart the backend. Do not use `*` in production.
+- 404 wrong endpoint: `openapi.json` does not list the route the frontend is calling, or the browser shows a 404. Confirm the frontend base URL has no `/api` suffix and auth calls use `/api/auth/register`, `/api/auth/login`, `/api/auth/me`, `/api/auth/refresh`, and `/api/auth/logout`.
+- 422 validation error: the backend was reached, but the request body does not match the Pydantic schema. Check the response `detail` field and the submitted form fields.
+- 500 backend error: the route exists and the backend was reached, but server-side code failed. Check the FastAPI terminal logs and database connectivity.
 
 ## API Endpoints
 
@@ -203,7 +251,7 @@ See `.env.example` for the full list.
 
 | Variable | Default | Description |
 |---|---|---|
-| `FRONTEND_ORIGINS` | `http://localhost:3000,http://localhost:5173,http://localhost:8080` | Comma-separated allowed CORS origins for the frontend |
+| `FRONTEND_ORIGINS` | `http://localhost:5173,http://127.0.0.1:5173,http://localhost:3000,http://127.0.0.1:3000,http://localhost:8080,http://127.0.0.1:8080` | Comma-separated allowed CORS origins for the frontend |
 | `BACKEND_CORS_ORIGINS` | `http://localhost:3000` | Legacy single-origin CORS variable (merged with `FRONTEND_ORIGINS`) |
 | `JWT_SECRET_KEY` | *(must be set)* | HS256 signing secret, min 32 chars |
 | `JWT_ALGORITHM` | `HS256` | JWT signing algorithm |
@@ -231,7 +279,7 @@ Core tables: `users`, `events`, `event_activities`, `investigations`, `predictio
 ## Testing Status
 
 - Backend: `pytest` covers `/healthz`, `/health/db`, Alembic migrations, FK/unique constraints, ORM relationships, soft-delete filtering, full auth flow, event CRUD/pagination/filtering/RBAC, frontend integration contracts, and the Phase 3.1 LangGraph workflow endpoint.
-- Latest run: **66 passed** — ruff: all checks passed — mypy: no issues (68 source files).
+- Latest local validation on 2026-06-09: backend `ruff` passed; backend `mypy` passed with no issues in 66 source files. Backend `pytest` and `alembic current` were blocked because PostgreSQL was not reachable on `localhost:5433`.
 - Frontend: `npm run build` passes; `npm run lint` passes with shadcn fast-refresh warnings only.
 - LangGraph workflow integration tests: added for success, auth/RBAC, missing events, status transitions, activities, response sections, decision selection, confidence, and critical-event approval.
 

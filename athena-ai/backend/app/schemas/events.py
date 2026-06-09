@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime
 from typing import Any, Literal
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from app.models.enums import EventActivityType, EventSeverity, EventStatus
 from app.models.event import Event, EventActivity
@@ -31,6 +31,8 @@ class EventActivityOut(BaseModel):
 
 
 class EventCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     title: str = Field(..., min_length=1, max_length=500)
     description: str | None = Field(default=None, max_length=10000)
     event_type: str = Field(..., min_length=1, max_length=100)
@@ -52,6 +54,8 @@ class EventCreate(BaseModel):
 
 
 class EventUpdate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     title: str | None = Field(default=None, min_length=1, max_length=500)
     description: str | None = Field(default=None, max_length=10000)
     event_type: str | None = Field(default=None, min_length=1, max_length=100)

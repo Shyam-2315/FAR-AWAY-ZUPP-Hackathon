@@ -180,6 +180,31 @@ function EventDetail() {
         </div>
       )}
 
+      <div className="glass rounded-xl p-5">
+        <h3 className="mb-3 font-semibold">Timeline</h3>
+        {data.timeline && data.timeline.length > 0 ? (
+          <ol className="space-y-3">
+            {data.timeline.map((item) => (
+              <li key={item.id} className="rounded-lg border border-border bg-background/40 p-3">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <span className="text-sm font-medium">{item.activity_type}</span>
+                  <span className="text-xs text-muted-foreground">
+                    {new Date(item.created_at).toLocaleString()}
+                  </span>
+                </div>
+                {item.details && Object.keys(item.details).length > 0 && (
+                  <pre className="mt-2 overflow-x-auto text-xs text-muted-foreground">
+                    {JSON.stringify(item.details, null, 2)}
+                  </pre>
+                )}
+              </li>
+            ))}
+          </ol>
+        ) : (
+          <p className="text-sm text-muted-foreground">No activity recorded yet.</p>
+        )}
+      </div>
+
       <div className="grid gap-4 lg:grid-cols-2">
         <div className="space-y-3">
           <h3 className="font-semibold">Recommendations</h3>

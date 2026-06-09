@@ -102,7 +102,7 @@ Requires `ANALYST+`. All fields are optional.
 
 ```json
 {
-  "status": "PROCESSING",
+  "status": "IN_PROGRESS",
   "severity": "CRITICAL"
 }
 ```

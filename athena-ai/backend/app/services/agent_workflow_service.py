@@ -2,7 +2,7 @@
 
 Responsibilities:
   1. Fetch and validate the event (404 if missing/soft-deleted).
-  2. Transition event status → PROCESSING and record WORKFLOW_STARTED activity.
+  2. Transition event status -> IN_PROGRESS and record WORKFLOW_STARTED activity.
   3. Serialise the event into a plain dict suitable for the AgentState.
   4. Invoke the compiled LangGraph workflow synchronously (all agents are sync).
   5. On success  → RESOLVED + WORKFLOW_COMPLETED activity.
@@ -70,7 +70,7 @@ class AgentWorkflowService:
         # ── 1. Fetch event (raises 404 if not found / soft-deleted) ──────
         event = await self._event_svc.get_event(event_id)
 
-        # ── 2. Mark PROCESSING + record WORKFLOW_STARTED ──────────────────
+        # 2. Mark IN_PROGRESS + record WORKFLOW_STARTED.
         await self._event_svc.record_workflow_activity(
             event_id,
             EventActivityType.WORKFLOW_STARTED,

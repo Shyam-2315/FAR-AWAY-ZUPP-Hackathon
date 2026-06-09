@@ -109,7 +109,7 @@ async def test_event_child_records_cascade_on_delete(db_session: AsyncSession) -
         title="Cascade event",
         event_type="billing",
         severity=EventSeverity.MEDIUM,
-        status=EventStatus.PROCESSING,
+        status=EventStatus.IN_PROGRESS,
         source="billing-service",
         created_by=user.id,
     )

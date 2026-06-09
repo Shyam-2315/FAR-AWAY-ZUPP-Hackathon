@@ -30,12 +30,14 @@ export const tokenStore = {
 export class ApiError extends Error {
   status: number;
   data: unknown;
+  url?: string;
 
-  constructor(message: string, status: number, data?: unknown) {
+  constructor(message: string, status: number, data?: unknown, url?: string) {
     super(message);
     this.name = "ApiError";
     this.status = status;
     this.data = data;
+    this.url = url;
   }
 }
 
@@ -68,7 +70,57 @@ function getErrorMessage(data: unknown, fallback: string): string {
   return typeof message === "string" ? message : fallback;
 }
 
-async function request<T>(path: string, opts: RequestInit = {}): Promise<T> {
+function describeHttpError(statusCode: number, data: unknown, url: string): string {
+  if (statusCode === 404) {
+    return `Athena API endpoint was not found: ${url}. Verify the backend route and API base URL.`;
+  }
+  if (statusCode === 422) {
+    return `Athena API validation error: ${getErrorMessage(data, "Check the submitted fields.")}`;
+  }
+  if (statusCode >= 500) {
+    return `Athena API backend error (${statusCode}). Check the FastAPI logs. ${getErrorMessage(
+      data,
+      "No error details were returned.",
+    )}`;
+  }
+  return getErrorMessage(data, `Athena API request failed with status ${statusCode}.`);
+}
+
+async function diagnoseFetchFailure(url: string, error: unknown): Promise<ApiError> {
+  if (typeof window !== "undefined" && !window.navigator.onLine) {
+    return new ApiError("The browser is offline. Connect to the network and retry.", 0, error, url);
+  }
+
+  try {
+    await fetch(url, { method: "GET", mode: "no-cors", cache: "no-store" });
+    const origin = typeof window === "undefined" ? "the frontend origin" : window.location.origin;
+    return new ApiError(
+      `CORS blocked the Athena API response from ${url}. Ensure FRONTEND_ORIGINS includes ${origin}.`,
+      0,
+      error,
+      url,
+    );
+  } catch {
+    return new ApiError(
+      `Could not reach the Athena API at ${API_BASE_URL}. Confirm the backend is running on http://localhost:8000 and the port is not stale.`,
+      0,
+      error,
+      url,
+    );
+  }
+}
+
+function redirectToLogin() {
+  if (typeof window !== "undefined" && window.location.pathname !== "/login") {
+    window.location.assign("/login");
+  }
+}
+
+async function request<T>(
+  path: string,
+  opts: RequestInit = {},
+  retryOnUnauthorized = true,
+): Promise<T> {
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
     ...(opts.headers as Record<string, string> | undefined),
@@ -76,17 +128,18 @@ async function request<T>(path: string, opts: RequestInit = {}): Promise<T> {
   const token = tokenStore.getAccess();
   if (token) headers.Authorization = `Bearer ${token}`;
 
+  const url = `${API_BASE_URL}${path}`;
+  const requestPayload = typeof opts.body === "string" ? opts.body : (opts.body ?? null);
+  console.log("[Athena API] request", {
+    url,
+    payload: requestPayload,
+  });
+
   let res: Response;
   try {
-    res = await fetch(`${API_BASE_URL}${path}`, { ...opts, headers });
+    res = await fetch(url, { ...opts, headers });
   } catch (error) {
-    throw new ApiError(
-      error instanceof TypeError
-        ? "Could not reach the Athena API. Check the backend URL and CORS settings."
-        : "Network request failed",
-      0,
-      error,
-    );
+    throw await diagnoseFetchFailure(url, error);
   }
 
   const text = await res.text();
@@ -97,12 +150,38 @@ async function request<T>(path: string, opts: RequestInit = {}): Promise<T> {
     data = text;
   }
 
+  console.log("[Athena API] response", {
+    url,
+    status: res.status,
+    body: data,
+  });
+
+  if (res.status === 401 && retryOnUnauthorized && path !== "/api/auth/refresh") {
+    const refresh = tokenStore.getRefresh();
+    if (refresh) {
+      try {
+        const refreshed = await request<AuthResponse>(
+          "/api/auth/refresh",
+          {
+            method: "POST",
+            body: JSON.stringify({ refresh_token: refresh }),
+          },
+          false,
+        );
+        tokenStore.set(refreshed.access_token, refreshed.refresh_token);
+        return request<T>(path, opts, false);
+      } catch {
+        tokenStore.clear();
+        redirectToLogin();
+      }
+    } else {
+      tokenStore.clear();
+      redirectToLogin();
+    }
+  }
+
   if (!res.ok) {
-    throw new ApiError(
-      getErrorMessage(data, `Request failed with ${res.status}`),
-      res.status,
-      data,
-    );
+    throw new ApiError(describeHttpError(res.status, data, url), res.status, data, url);
   }
 
   return data as T;
@@ -118,6 +197,7 @@ function appendParam(q: URLSearchParams, key: string, value?: string | string[] 
 }
 
 export const api = {
+  healthCheck: () => request<{ status: string; service: string }>("/healthz", {}, false),
   register: (payload: { name: string; email: string; password: string; role?: string }) =>
     request<AuthResponse>("/api/auth/register", {
       method: "POST",

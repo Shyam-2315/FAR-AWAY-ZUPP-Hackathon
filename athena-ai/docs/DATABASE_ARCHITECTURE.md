@@ -58,7 +58,7 @@ Central aggregate for the decision workflow.
 | `description` | TEXT | Optional |
 | `event_type` | VARCHAR(100) | Domain-specific classifier |
 | `severity` | `event_severity` ENUM | `LOW` … `CRITICAL` |
-| `status` | `event_status` ENUM | `NEW`, `PROCESSING`, `RESOLVED`, `FAILED` |
+| `status` | `event_status` ENUM | `NEW`, `IN_PROGRESS`, `RESOLVED`, `FAILED` |
 | `source` | VARCHAR(255) | Originating system |
 | `metadata` | JSONB | Flexible event context (ORM attribute: `event_metadata`) |
 | `created_by` | UUID FK → `users.id` | `RESTRICT` on delete |
