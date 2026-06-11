@@ -21,6 +21,11 @@ dependencies = [
   "bcrypt==4.0.1",
   "python-jose[cryptography]==3.3.0",
   "python-multipart>=0.0.9",
+  # FIX 1: Required by Pydantic to validate EmailStr fields (e.g. RegisterRequest).
+  # Without this, FastAPI crashes on startup with ModuleNotFoundError: email_validator.
+  "email-validator>=2.1.0",
+  # FIX 4: Required by the PDF report generation endpoint.
+  "reportlab>=4.0.0",
 ]
 
 [project.optional-dependencies]

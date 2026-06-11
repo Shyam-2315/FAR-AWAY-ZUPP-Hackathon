@@ -8,6 +8,7 @@ from app.models.recommendation import Recommendation
 from app.models.refresh_token import RefreshToken
 from app.models.report import Report
 from app.models.user import User
+from app.models.workflow_run import WorkflowRun
 
 __all__ = [
     "AuditLog",
@@ -25,4 +26,5 @@ __all__ = [
     "Report",
     "User",
     "UserRole",
+    "WorkflowRun",
 ]

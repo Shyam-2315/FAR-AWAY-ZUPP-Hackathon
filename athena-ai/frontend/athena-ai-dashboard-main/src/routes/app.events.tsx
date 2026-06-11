@@ -17,8 +17,9 @@ import { DeleteConfirmDialog } from "@/components/DeleteConfirmDialog";
 import { LoadingState } from "@/components/LoadingState";
 import { EmptyState } from "@/components/EmptyState";
 import { ErrorState } from "@/components/ErrorState";
-import type { Event, Severity, Status } from "@/lib/types";
-import { Plus, Search, ChevronLeft, ChevronRight } from "lucide-react";
+import { WorkflowStreamPanel } from "@/components/WorkflowStreamPanel";
+import type { AgentWorkflowResponse, Event, Severity, Status } from "@/lib/types";
+import { Plus, Search, ChevronLeft, ChevronRight, Brain } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/app/events")({
@@ -38,6 +39,14 @@ function EventsPage() {
   const [createOpen, setCreateOpen] = useState(false);
   const [editEvent, setEditEvent] = useState<Event | null>(null);
   const [deleteEvent, setDeleteEvent] = useState<Event | null>(null);
+
+  // ── SSE streaming state ─────────────────────────────────────────────── //
+  // activeStream holds the event being streamed right now.
+  // When non-null, the WorkflowStreamPanel is rendered below the table.
+  const [activeStream, setActiveStream] = useState<{
+    eventId: string;
+    eventTitle: string;
+  } | null>(null);
 
   const sortParams = useMemo(() => {
     if (sort === "severity") return { sort_by: "severity" as const, sort_order: "desc" as const };
@@ -81,6 +90,34 @@ function EventsPage() {
     onError: (error: unknown) => toast.error(getApiErrorMessage(error, "Failed to delete")),
   });
 
+  // ── Launch SSE stream for a specific event ──────────────────────────── //
+  const handleRunWorkflow = (event: Event) => {
+    if (activeStream) {
+      toast.warning("A workflow is already running. Wait for it to finish.");
+      return;
+    }
+    setActiveStream({ eventId: event.id, eventTitle: event.title });
+  };
+
+  // ── Called by WorkflowStreamPanel when the "done" SSE event arrives ─── //
+  const handleStreamComplete = (result: AgentWorkflowResponse) => {
+    const savings = result?.report?.estimated_savings;
+    const savingsStr =
+      savings != null
+        ? `Estimated savings: $${Number(savings).toLocaleString()}`
+        : "Workflow completed.";
+
+    toast.success(`AI Core finished — ${savingsStr}`);
+
+    // Clear the active stream FIRST before invalidating queries.
+    // If we invalidate first, React re-renders with activeStream still set,
+    // which remounts WorkflowStreamPanel and starts a new SSE connection.
+    setActiveStream(null);
+
+    // Then refresh the events list so status badges flip NEW → RESOLVED
+    qc.invalidateQueries({ queryKey: ["events"] });
+  };
+
   return (
     <div className="mx-auto max-w-7xl space-y-5">
       <header className="flex flex-wrap items-end justify-between gap-3">
@@ -95,6 +132,7 @@ function EventsPage() {
         </Button>
       </header>
 
+      {/* ── Filter bar ──────────────────────────────────────────────────── */}
       <div className="glass rounded-xl p-4">
         <div className="flex flex-wrap items-center gap-3">
           <div className="relative min-w-[220px] flex-1">
@@ -160,6 +198,7 @@ function EventsPage() {
         </div>
       </div>
 
+      {/* ── Table / states ──────────────────────────────────────────────── */}
       {isLoading ? (
         <LoadingState label="Loading events…" />
       ) : error ? (
@@ -172,13 +211,58 @@ function EventsPage() {
           onAction={() => setCreateOpen(true)}
         />
       ) : (
-        <EventTable
-          events={data?.items ?? []}
-          onEdit={(e) => setEditEvent(e)}
-          onDelete={(e) => setDeleteEvent(e)}
+        <>
+          <EventTable
+            events={data?.items ?? []}
+            onEdit={(e) => setEditEvent(e)}
+            onDelete={(e) => setDeleteEvent(e)}
+          />
+
+          {/* ── Run AI Core action strip — one button per event ──────── */}
+          <div className="glass rounded-xl p-4">
+            <p className="mb-3 text-xs font-medium uppercase tracking-wider text-muted-foreground">
+              Run AI Core
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {(data?.items ?? []).map((event) => {
+                const isThisRunning = activeStream?.eventId === event.id;
+                const isOtherRunning = activeStream !== null && activeStream.eventId !== event.id;
+                return (
+                  <Button
+                    key={event.id}
+                    size="sm"
+                    variant={isThisRunning ? "default" : "outline"}
+                    className="gap-2"
+                    disabled={isOtherRunning}
+                    onClick={() => handleRunWorkflow(event)}
+                    title={`Run AI Core on: ${event.title}`}
+                  >
+                    <Brain
+                      className={`h-3.5 w-3.5 ${isThisRunning ? "animate-pulse text-violet-300" : ""}`}
+                    />
+                    {isThisRunning ? "Running…" : "Run AI Core"}
+                    <span className="max-w-[140px] truncate text-xs opacity-60">
+                      {event.title}
+                    </span>
+                  </Button>
+                );
+              })}
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* ── Live SSE stream panel ─────────────────────────────────────── */}
+      {activeStream && (
+        <WorkflowStreamPanel
+          eventId={activeStream.eventId}
+          eventTitle={activeStream.eventTitle}
+          onComplete={handleStreamComplete}
+          onClose={() => setActiveStream(null)}
         />
       )}
 
+      {/* ── Pagination ───────────────────────────────────────────────── */}
       {data && data.total > pageSize && (
         <div className="flex items-center justify-between">
           <p className="text-sm text-muted-foreground">

@@ -68,6 +68,16 @@ class AuthService:
     ) -> User:
         """Create a new user account.
 
+        FIX 2 — Dev-mode role elevation:
+        When ATHENA_ENV is "development" (the default for all local runs),
+        every new registration is automatically elevated to ADMIN so developers
+        can immediately exercise every protected endpoint without touching the
+        database manually.
+
+        To restore the normal VIEWER default for non-local environments, set
+        ATHENA_ENV=staging or ATHENA_ENV=production in your .env file — the
+        override only fires when the value is exactly "development".
+
         Raises:
             AuthError(409): if the email is already registered.
         """
@@ -75,13 +85,25 @@ class AuthService:
         if existing is not None:
             raise AuthError("Email already registered", status_code=409)
 
+        from app.core.settings import get_settings
         from app.models.enums import UserRole
+
+        # ------------------------------------------------------------------
+        # Determine the effective role for this registration.
+        # In development mode we ignore whatever role the caller sent and
+        # always grant ADMIN so that local developers are never blocked by
+        # RBAC guardrails during testing.  In every other environment the
+        # caller-supplied value is used unchanged (defaults to "VIEWER").
+        # ------------------------------------------------------------------
+        effective_role = role
+        if get_settings().athena_env.lower() == "development":
+            effective_role = "ADMIN"
 
         user = User(
             name=name,
             email=email.lower().strip(),
             password_hash=self.hash_password(password),
-            role=UserRole(role),
+            role=UserRole(effective_role),
             is_active=True,
         )
         user = await self._users.add(user)
@@ -90,7 +112,9 @@ class AuthService:
             "user_registered",
             user_id=user.id,
             ip_address=ip_address,
-            metadata={"email": email, "role": role},
+            # Log the role that was actually assigned, not the one requested,
+            # so the audit trail is truthful about what happened.
+            metadata={"email": email, "role": effective_role},
         )
         return user
 

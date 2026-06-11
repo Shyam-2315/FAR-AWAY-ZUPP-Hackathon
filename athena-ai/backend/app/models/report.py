@@ -1,3 +1,11 @@
+"""Report ORM model — stores the Reporting Agent's structured output.
+
+Mirrors ReportOutput from app.agents.state exactly so there is no
+impedance mismatch between the AgentState and what gets persisted.
+"""
+
+from __future__ import annotations
+
 import uuid
 from datetime import datetime
 from typing import TYPE_CHECKING
@@ -26,9 +34,14 @@ class Report(Base):
         ForeignKey("events.id", ondelete="CASCADE"),
         nullable=False,
     )
-    report_type: Mapped[str] = mapped_column(String(100), nullable=False)
-    report_text: Mapped[str] = mapped_column(Text, nullable=False)
+
+    # ── Structured agent output fields (mirror ReportOutput TypedDict) ── #
+    executive_summary: Mapped[str | None] = mapped_column(Text, nullable=True)
+    technical_summary: Mapped[str | None] = mapped_column(Text, nullable=True)
+    recommended_action: Mapped[str | None] = mapped_column(Text, nullable=True)
+    estimated_savings: Mapped[float | None] = mapped_column(Float, nullable=True)
     confidence: Mapped[float | None] = mapped_column(Float, nullable=True)
+
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         server_default=func.now(),

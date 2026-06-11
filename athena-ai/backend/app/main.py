@@ -10,6 +10,8 @@ from app.api.auth import router as auth_router
 from app.api.events import router as events_router
 from app.api.health import router as health_router
 from app.api.routes.agents import router as agents_router
+from app.api.routes.stream import router as stream_router          # NEW — SSE streaming
+from app.api.endpoints.reports import router as reports_router    # NEW — PDF reports
 from app.core.settings import get_settings
 from app.db.session import dispose_engine
 
@@ -44,6 +46,8 @@ def create_app() -> FastAPI:
     app.include_router(auth_router, prefix="/api/auth")
     app.include_router(events_router, prefix="/api")
     app.include_router(agents_router, prefix="/api")
+    app.include_router(stream_router, prefix="/api")     # SSE: GET /api/agents/stream/{event_id}
+    app.include_router(reports_router, prefix="/api")    # PDF: GET /api/reports/{event_id}/pdf
     return app
 
 
