@@ -44,6 +44,9 @@ class Settings(BaseSettings):
     access_token_expire_minutes: int = Field(default=30, alias="ACCESS_TOKEN_EXPIRE_MINUTES")
     refresh_token_expire_days: int = Field(default=7, alias="REFRESH_TOKEN_EXPIRE_DAYS")
 
+    # Anthropic Claude (used by agent nodes for real LLM-generated outputs)
+    anthropic_api_key: str = Field(default="", alias="ANTHROPIC_API_KEY")
+
     @staticmethod
     def _parse_origins(raw: str) -> list[str]:
         return [origin.strip() for origin in raw.split(",") if origin.strip()]

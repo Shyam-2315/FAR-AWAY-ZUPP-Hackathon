@@ -26,6 +26,8 @@ dependencies = [
   "email-validator>=2.1.0",
   # FIX 4: Required by the PDF report generation endpoint.
   "reportlab>=4.0.0",
+  # Used by agent nodes for real LLM-generated outputs (Claude API).
+  "anthropic>=0.40.0",
 ]
 
 [project.optional-dependencies]

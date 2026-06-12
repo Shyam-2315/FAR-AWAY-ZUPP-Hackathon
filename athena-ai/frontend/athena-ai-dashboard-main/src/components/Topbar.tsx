@@ -8,12 +8,31 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Bell, LogOut, Search, User as UserIcon } from "lucide-react";
+import { Bell, LogOut, Search, User as UserIcon, AlertTriangle } from "lucide-react";
 import { useNavigate } from "@tanstack/react-router";
+import { useQuery } from "@tanstack/react-query";
+import { api } from "@/lib/api";
 
 export function Topbar() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+
+  const { data: alertsData } = useQuery({
+    queryKey: ["notifications", "unresolved"],
+    queryFn: () =>
+      api.events.list({
+        status: ["NEW", "IN_PROGRESS"],
+        severity: ["HIGH", "CRITICAL"],
+        page: 1,
+        page_size: 5,
+        sort_by: "created_at",
+        sort_order: "desc",
+      }),
+    refetchInterval: 30_000,
+  });
+
+  const alerts = alertsData?.items ?? [];
+  const alertCount = alertsData?.total ?? 0;
 
   const initials = user?.name
     ?.split(" ")
@@ -32,9 +51,59 @@ export function Topbar() {
         />
       </div>
       <div className="ml-auto flex items-center gap-2">
-        <Button size="icon" variant="ghost">
-          <Bell className="h-4 w-4" />
-        </Button>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button size="icon" variant="ghost" className="relative">
+              <Bell className="h-4 w-4" />
+              {alertCount > 0 && (
+                <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-semibold leading-none text-destructive-foreground">
+                  {alertCount > 9 ? "9+" : alertCount}
+                </span>
+              )}
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-80">
+            <DropdownMenuLabel>
+              Notifications
+              {alertCount > 0 && (
+                <span className="ml-1 text-xs text-muted-foreground">
+                  ({alertCount} unresolved)
+                </span>
+              )}
+            </DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            {alerts.length === 0 ? (
+              <div className="px-3 py-6 text-center text-sm text-muted-foreground">
+                No new notifications.
+              </div>
+            ) : (
+              <div className="max-h-80 overflow-y-auto">
+                {alerts.map((event) => (
+                  <DropdownMenuItem
+                    key={event.id}
+                    className="flex flex-col items-start gap-1 whitespace-normal py-2"
+                    onClick={() => navigate({ to: "/app/events/$id", params: { id: event.id } })}
+                  >
+                    <div className="flex w-full items-center gap-2">
+                      <AlertTriangle
+                        className={`h-3.5 w-3.5 shrink-0 ${
+                          event.severity === "CRITICAL" ? "text-destructive" : "text-amber-500"
+                        }`}
+                      />
+                      <span className="truncate text-sm font-medium">{event.title}</span>
+                    </div>
+                    <div className="flex w-full items-center justify-between text-xs text-muted-foreground">
+                      <span>{event.event_type}</span>
+                      <span>
+                        {event.severity} · {event.status}
+                      </span>
+                    </div>
+                  </DropdownMenuItem>
+                ))}
+              </div>
+            )}
+          </DropdownMenuContent>
+        </DropdownMenu>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <button className="flex items-center gap-2 rounded-lg border border-border bg-background/40 px-2 py-1.5 text-sm hover:bg-background/70">

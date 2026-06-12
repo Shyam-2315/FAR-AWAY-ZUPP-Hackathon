@@ -1,12 +1,16 @@
 """Agent workflow service — orchestrates the LangGraph pipeline for a given event.
 
-Phase 3.2 complete: this version adds:
+Phase 3.3: agent nodes now make real Claude (Anthropic) API calls and run
+asynchronously. This version uses LangGraph's `.astream()` API instead of
+the synchronous `.stream()` so each node can `await` its LLM call without
+blocking the event loop.
+
   1. stream_run() — async generator that yields AgentState snapshots after
-     each node via LangGraph's .stream() API. Used by the SSE endpoint.
+     each node via LangGraph's .astream() API. Used by the SSE endpoint.
   2. Full persistence — after the pipeline completes, all agent outputs are
      written to PostgreSQL (WorkflowRun + Report rows) so nothing is lost.
 
-Original run() is preserved unchanged for backwards compatibility.
+Original run() is preserved, now using `.ainvoke()` to match the async nodes.
 """
 
 from __future__ import annotations
@@ -74,7 +78,7 @@ class AgentWorkflowService:
         self._event_svc = EventService(session)
 
     # ------------------------------------------------------------------ #
-    # Original synchronous run() — kept for the existing POST endpoint
+    # Original run() — kept for the existing POST endpoint, now async
     # ------------------------------------------------------------------ #
 
     async def run(self, event_id: uuid.UUID, actor: User) -> AgentState:
@@ -112,7 +116,7 @@ class AgentWorkflowService:
 
         try:
             workflow = get_workflow()
-            final_state: AgentState = workflow.invoke(initial_state)  # type: ignore[attr-defined]
+            final_state: AgentState = await workflow.ainvoke(initial_state)  # type: ignore[attr-defined]
         except Exception as exc:
             error_msg = str(exc)
             await self._event_svc.record_workflow_activity(
@@ -144,7 +148,7 @@ class AgentWorkflowService:
         return final_state
 
     # ------------------------------------------------------------------ #
-    # New streaming run() — used by the SSE endpoint
+    # Streaming run() — used by the SSE endpoint, now async via .astream()
     # ------------------------------------------------------------------ #
 
     async def stream_run(
@@ -163,6 +167,9 @@ class AgentWorkflowService:
 
         The frontend EventSource listener parses each message and updates
         the live progress UI node-by-node as they arrive.
+
+        Each agent node now performs a real Claude API call and may take
+        1-3 seconds, so SSE events arrive with a natural, visible pace.
         """
         # ── Fetch + validate event ──────────────────────────────────────
         event = await self._event_svc.get_event(event_id)
@@ -207,17 +214,11 @@ class AgentWorkflowService:
         try:
             workflow = get_workflow()
 
-            # Run LangGraph synchronously — it's pure CPU/mock logic with
-            # no async DB calls inside agents, so .invoke() is safe here.
-            # We use .stream() to get per-node chunks for SSE updates.
-            # NOTE: Do NOT run in a thread executor — the async SQLAlchemy
-            # session is not thread-safe and will corrupt on flush/commit.
-            chunks: list[dict[str, Any]] = list(
-                workflow.stream(initial_state)  # type: ignore[attr-defined]
-            )
-
-            # Process each chunk and yield an SSE event
-            for chunk in chunks:
+            # Run LangGraph asynchronously — each agent node performs a real
+            # Claude API call via `await`, so .astream() yields a chunk after
+            # each node completes without blocking the event loop or the
+            # async SQLAlchemy session.
+            async for chunk in workflow.astream(initial_state):  # type: ignore[attr-defined]
                 for node_name, state_slice in chunk.items():
                     if node_name not in ORDERED_NODES:
                         continue

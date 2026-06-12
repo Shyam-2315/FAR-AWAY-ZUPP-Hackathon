@@ -12,6 +12,10 @@ Requires human approval when any of the following is true:
     - Event severity is CRITICAL
     - Decision confidence < 0.75
     - Expected savings > 500 000
+
+This agent is intentionally deterministic (no LLM call) — the decision
+engine must be auditable and reproducible. It is `async def` only so it
+fits LangGraph's `astream` execution alongside the other async agent nodes.
 """
 
 from __future__ import annotations
@@ -35,7 +39,7 @@ def _score(strategy: StrategyItem) -> float:
     return strategy["estimated_savings"] + bonus - penalty
 
 
-def decision_agent(state: AgentState) -> AgentState:
+async def decision_agent(state: AgentState) -> AgentState:
     """Select the highest-scoring strategy and emit a decision."""
     strategies = state.get("strategies") or []
     if not strategies:

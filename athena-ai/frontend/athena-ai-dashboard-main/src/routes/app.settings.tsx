@@ -22,6 +22,7 @@ function SettingsPage() {
   const toggleTheme = () => {
     const next = !isDark;
     document.documentElement.classList.toggle("dark", next);
+    localStorage.setItem("athena-theme", next ? "dark" : "light");
     setIsDark(next);
   };
 
