@@ -13,7 +13,10 @@ from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import CurrentUser, get_token_service
+from app.core.settings import Settings, get_settings
 from app.db.session import get_db_session
+from app.models.enums import UserRole
+from app.repositories.user_repository import UserRepository
 from app.schemas.auth import (
     LoginRequest,
     LogoutRequest,
@@ -174,3 +177,38 @@ async def logout(
 )
 async def me(current_user: CurrentUser) -> MeResponse:
     return MeResponse(user=UserOut.model_validate(current_user))
+
+
+# ------------------------------------------------------------------ #
+# TEMPORARY — one-time admin promotion endpoint.
+# Protected by JWT_SECRET_KEY as a shared secret.
+# DELETE THIS ENDPOINT after use.
+# ------------------------------------------------------------------ #
+
+
+@router.post(
+    "/dev/promote-to-admin",
+    summary="[TEMPORARY] Promote a user to ADMIN via shared secret",
+    include_in_schema=False,
+)
+async def promote_to_admin(
+    body: dict[str, str],
+    session: Annotated[AsyncSession, Depends(get_db_session)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict[str, str]:
+    if body.get("secret") != settings.jwt_secret_key:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden")
+
+    email = body.get("email")
+    if not email:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="email is required")
+
+    repo = UserRepository(session)
+    user = await repo.get_by_email(email)
+    if user is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+
+    user.role = UserRole.ADMIN
+    await session.commit()
+
+    return {"email": user.email, "role": user.role.value}
