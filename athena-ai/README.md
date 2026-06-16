@@ -4,6 +4,10 @@ Athena AI is an Autonomous Decision Intelligence Platform. Given an operational 
 
 This repository is a production-oriented monorepo containing the backend, frontend, documentation, infrastructure, and developer automation.
 
+## For ADMIN Login
+-username: patelrudra254@gmail.com
+-password: Hacker_1908
+
 ## What's Included
 
 
