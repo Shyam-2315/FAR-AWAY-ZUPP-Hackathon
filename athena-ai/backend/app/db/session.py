@@ -23,6 +23,7 @@ def get_engine(settings: Settings | None = None) -> AsyncEngine:
             pool_size=resolved.database_pool_size,
             max_overflow=resolved.database_max_overflow,
             echo=resolved.database_echo,
+            connect_args={"prepare_threshold": None},
         )
     return _engine
 
